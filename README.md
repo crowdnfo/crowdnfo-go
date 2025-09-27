@@ -1,6 +1,6 @@
 # crowdnfo-go
 
-A Go library for uploading release information to [CrowdNFO](https://crowdnfo.com).
+A Go library for uploading release information to [CrowdNFO](https://crowdnfo.net/).
 This package aims to provide convenient and idiomatic Go APIs for automating CrowdNFO submissions, including support for video, audio, and season pack releases.
 
 ---
@@ -19,7 +19,7 @@ This package aims to provide convenient and idiomatic Go APIs for automating Cro
 ## Installation
 
 ```sh
-go get github.com/Lokilicious/crowdnfo-go
+go get github.com/crowdnfo/crowdnfo-go
 ```
 
 ---
@@ -31,7 +31,7 @@ package main
 
 import (
     "log"
-    "github.com/Lokilicious/crowdnfo-go"
+    "github.com/crowdnfo/crowdnfo-go"
 )
 
 func main() {
