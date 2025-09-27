@@ -5,7 +5,7 @@ import (
 	"log"
 	"os"
 
-	"github.com/Lokilicious/crowdnfo-go" // import your library
+	"github.com/crowdnfo/crowdnfo-go" // import your library
 )
 
 func main() {

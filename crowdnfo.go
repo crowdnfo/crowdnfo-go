@@ -10,10 +10,10 @@ import (
 	"os/exec"
 	"regexp"
 
-	"github.com/Lokilicious/crowdnfo-go/internal"
-	"github.com/Lokilicious/crowdnfo-go/internal/api"
-	"github.com/Lokilicious/crowdnfo-go/internal/files"
-	"github.com/Lokilicious/crowdnfo-go/internal/mediainfo"
+	"github.com/crowdnfo/crowdnfo-go/internal"
+	"github.com/crowdnfo/crowdnfo-go/internal/api"
+	"github.com/crowdnfo/crowdnfo-go/internal/files"
+	"github.com/crowdnfo/crowdnfo-go/internal/mediainfo"
 )
 
 // Options holds all parameters for processing a release.

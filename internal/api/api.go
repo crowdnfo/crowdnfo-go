@@ -12,7 +12,7 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/Lokilicious/crowdnfo-go/internal/files"
+	"github.com/crowdnfo/crowdnfo-go/internal/files"
 )
 
 var BASE_URL = "https://crowdnfo.net/api/releases"

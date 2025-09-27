@@ -3,7 +3,7 @@ package internal
 import (
 	"regexp"
 
-	"github.com/Lokilicious/crowdnfo-go/internal/files"
+	"github.com/crowdnfo/crowdnfo-go/internal/files"
 )
 
 // isSeasonPack determines if the given job name corresponds to a season pack
