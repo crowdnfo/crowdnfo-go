@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/crowdnfo/crowdnfo-go/internal/files"
+	"github.com/crowdnfo/crowdnfo-go/internal/version"
 )
 
 var BASE_URL = "https://crowdnfo.net/api/releases"
@@ -199,7 +200,6 @@ func uploadFileList(apiKey string, fileListRequest files.FileListRequest) error 
 	return nil
 }
 
-// getUserAgent returns the User-Agent string for API requests
 func getUserAgent() string {
-	return fmt.Sprintf("crowdnfo-go/%s")
+	return fmt.Sprintf("crowdnfo-go/%s", version.Version)
 }
