@@ -71,5 +71,5 @@ git tag "$NEW_TAG"
 echo "Created tag $NEW_TAG"
 
 # Optionally push (uncomment if you want to push automatically)
-# git push
-# git push origin "$NEW_TAG"
+git push
+git push origin "$NEW_TAG"
