@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 	"log"
-	"os"
 
 	"github.com/crowdnfo/crowdnfo-go" // import your library
 )
@@ -17,12 +16,18 @@ func main() {
 		NFOFilePath:     "",  // path to the NFO file (optional, auto-detected if empty)
 		APIKey:          "",  // your CrowdNFO API key
 		MaxHashFileSize: 0,   // max file size for hashing in bytes (0 for no limit, -1 for do not hash)
-		ArchiveDir:      "",  // directory to archive uploaded metadata (optional)
+		ArchiveDir:      "",  // directory to archive uploaded metadata, empty for no archiving
+		ProgressCB: func(stage, detail string) {
+			fmt.Printf("[%s]\t%s\n", stage, detail)
+		},
 	}
 
-	err := crowdnfo.ProcessRelease(opts, log.New(os.Stdout, "crowdnfo: ", log.LstdFlags))
-
+	result, err := crowdnfo.ProcessRelease(opts)
 	if err != nil {
 		fmt.Printf("Error: %v\n", err)
+	}
+
+	for _, warn := range result.Warnings {
+		log.Printf("Warning: %v", warn)
 	}
 }

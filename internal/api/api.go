@@ -5,15 +5,16 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"log"
 	"mime/multipart"
 	"net/http"
 	"os"
 	"path/filepath"
 	"time"
 
+	"github.com/crowdnfo/crowdnfo-go/internal"
 	"github.com/crowdnfo/crowdnfo-go/internal/files"
 	"github.com/crowdnfo/crowdnfo-go/internal/version"
+	"github.com/crowdnfo/crowdnfo-go/typing"
 )
 
 var BASE_URL = "https://crowdnfo.net/api/releases"
@@ -27,45 +28,50 @@ const (
 // UploadToCrowdNFO uploads release data to CrowdNFO.
 // On failure, returns an error. If multiple errors occurred, returns an *UploadError
 // which contains all error messages and the count of successful uploads.
-func UploadToCrowdNFO(apiKey string, releaseName, category, hash, releasePath string, mediaInfoJSON []byte, nfoFile, archiveDir string, logger *log.Logger) error {
+func UploadToCrowdNFO(apiKey string, releaseName, category, hash, releasePath string, mediaInfoJSON []byte, nfoFile, archiveDir string, progressCB *typing.ProgressCB) *typing.ProcessResult {
+	result := &typing.ProcessResult{}
 	fileListEntries, err := files.CreateFileList(releasePath, releaseName)
 	if err != nil {
-		logger.Printf("%s - Failed to create File List: %v", releaseName, err)
+		result.Warnings = append(result.Warnings, fmt.Errorf("%s - Failed to create File List: %v", releaseName, err))
 		fileListEntries = nil
 	}
-	uploadAssets(apiKey, releaseName, category, hash, archiveDir, mediaInfoJSON, nfoFile, fileListEntries, logger)
-
-	return nil
+	uploadResult := uploadAssets(apiKey, releaseName, category, hash, archiveDir, mediaInfoJSON, nfoFile, fileListEntries)
+	result = internal.MergeProcessResults(result, uploadResult)
+	return result
 }
 
 // UploadEpisodeToCrowdNFO uploads release data to CrowdNFO.
 // On failure, returns an error. If multiple errors occurred, returns an *UploadError
 // which contains all error messages and the count of successful uploads.
-func UploadEpisodeToCrowdNFO(apiKey string, episodeInfo files.EpisodeInfo, category, hash string, mediaInfoJSON []byte, archiveDir string, logger *log.Logger) {
+func UploadEpisodeToCrowdNFO(apiKey string, episodeInfo files.EpisodeInfo, category, hash string, mediaInfoJSON []byte, archiveDir string, progressCB *typing.ProgressCB) *typing.ProcessResult {
+	result := &typing.ProcessResult{}
 	fileListEntries, err := files.CreateEpisodeFileList(episodeInfo)
 	if err != nil {
-		logger.Printf("%s - Failed to create File List: %v", episodeInfo, err)
+		result.Warnings = append(result.Warnings, fmt.Errorf("%s - Failed to create File List: %v", episodeInfo.ReleaseName, err))
 		fileListEntries = nil
 	}
-	uploadAssets(apiKey, episodeInfo.ReleaseName, category, hash, archiveDir, mediaInfoJSON, episodeInfo.NFOFile, fileListEntries, logger)
+	uploadResult := uploadAssets(apiKey, episodeInfo.ReleaseName, category, hash, archiveDir, mediaInfoJSON, episodeInfo.NFOFile, fileListEntries)
+	result = internal.MergeProcessResults(result, uploadResult)
+	return result
 }
 
-func uploadAssets(apiKey, releaseName, category, hash, archiveDir string, mediaInfoJSON []byte, nfoFile string, fileListEntries []files.FileListEntry, logger *log.Logger) {
+func uploadAssets(apiKey, releaseName, category, hash, archiveDir string, mediaInfoJSON []byte, nfoFile string, fileListEntries []files.FileListEntry) *typing.ProcessResult {
+	result := &typing.ProcessResult{}
 	// MediaInfo
 	if len(mediaInfoJSON) > 0 {
 		if err := uploadFile(apiKey, releaseName, MediaInfoType, "", mediaInfoJSON, hash, category, archiveDir); err != nil {
-			logger.Printf("%s - %s: %v", releaseName, MediaInfoType, err)
+			result.Warnings = append(result.Warnings, fmt.Errorf("%s - %s: %v", releaseName, MediaInfoType, err))
 		}
 	}
 	// NFO
 	if nfoFile != "" {
 		nfoData, err := os.ReadFile(nfoFile)
 		if err != nil {
-			logger.Printf("%s - %s: %v", releaseName, NFOType, err)
+			result.Warnings = append(result.Warnings, fmt.Errorf("%s - %s: %v", releaseName, NFOType, err))
 		} else {
 			nfoFileName := filepath.Base(nfoFile)
 			if err := uploadFile(apiKey, releaseName, NFOType, nfoFileName, nfoData, hash, category, archiveDir); err != nil {
-				logger.Printf("%s - %s: %v", releaseName, NFOType, err)
+				result.Warnings = append(result.Warnings, fmt.Errorf("%s - %s: %v", releaseName, NFOType, err))
 			}
 		}
 	}
@@ -77,9 +83,11 @@ func uploadAssets(apiKey, releaseName, category, hash, archiveDir string, mediaI
 			Entries:     fileListEntries,
 		}
 		if err := uploadFileList(apiKey, fileListRequest); err != nil {
-			logger.Printf("%s - %s: %v", releaseName, FileListType, err)
+			result.Warnings = append(result.Warnings, fmt.Errorf("%s - %s: %v", releaseName, FileListType, err))
 		}
 	}
+
+	return result
 }
 
 func uploadFile(apiKey string, releaseName, fileType, originalFileName string, fileData []byte, hash, category, archiveDir string) error {
@@ -142,9 +150,11 @@ func uploadFile(apiKey string, releaseName, fileType, originalFileName string, f
 	}
 
 	// Archive the uploaded file
-	archiveFile := filepath.Join(archiveDir, getFileName(fileType, releaseName, originalFileName))
-	if err := os.WriteFile(archiveFile, fileData, 0644); err != nil {
-		return fmt.Errorf("failed to archive uploaded %s file: %w", fileType, err)
+	if archiveDir != "" {
+		archiveFile := filepath.Join(archiveDir, getFileName(fileType, releaseName, originalFileName))
+		if err := os.WriteFile(archiveFile, fileData, 0644); err != nil {
+			return fmt.Errorf("failed to archive uploaded %s file: %w", fileType, err)
+		}
 	}
 
 	return nil

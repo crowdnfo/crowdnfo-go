@@ -30,26 +30,37 @@ go get github.com/crowdnfo/crowdnfo-go
 package main
 
 import (
-    "log"
-    "github.com/crowdnfo/crowdnfo-go"
+	"fmt"
+	"log"
+
+	"github.com/crowdnfo/crowdnfo-go" // import your library
 )
 
 func main() {
-    opts := crowdnfo.Options{
-        ReleasePath:     "/path/to/release",
-        MediaInfoPath:   "", // optional, defaults to "mediainfo" in PATH
-        Category:        "", // optional, auto-detect if empty
-        APIKey:          "your-crowdnfo-api-key",
-        ArchiveDir:      "", // optional
-        MaxHashFileSize: 0,  // 0 = always hash, <0 = never hash
-    }
+	opts := crowdnfo.Options{
+		ReleasePath:     "",  // path to the release directory
+		MediaInfoPath:   "",  // path to mediainfo binary (optional, defaults to "mediainfo" in PATH)
+		MediaInfoJSON:   nil, // actual MediaInfo JSON data as byte[] (optional)
+		Category:        "",  // e.g., "TV", "Movies" (optional, auto-detected if empty)
+		NFOFilePath:     "",  // path to the NFO file (optional, auto-detected if empty)
+		APIKey:          "",  // your CrowdNFO API key
+		MaxHashFileSize: 0,   // max file size for hashing in bytes (0 for no limit, -1 for do not hash)
+		ArchiveDir:      "",  // directory to archive uploaded metadata, empty for no archiving
+		ProgressCB: func(stage, detail string) {
+			fmt.Printf("[%s]\t%s\n", stage, detail)
+		},
+	}
 
-    logger := log.New(os.Stdout, "[crowdnfo] ", log.LstdFlags)
+	result, err := crowdnfo.ProcessRelease(opts)
+	if err != nil {
+		fmt.Printf("Error: %v\n", err)
+	}
 
-    if err := crowdnfo.ProcessRelease(opts, logger); err != nil {
-        logger.Fatalf("Failed to process release: %v", err)
-    }
+	for _, warn := range result.Warnings {
+		log.Printf("Warning: %v", warn)
+	}
 }
+
 ```
 
 ---

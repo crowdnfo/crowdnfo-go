@@ -4,6 +4,7 @@ import (
 	"regexp"
 
 	"github.com/crowdnfo/crowdnfo-go/internal/files"
+	"github.com/crowdnfo/crowdnfo-go/typing"
 )
 
 // isSeasonPack determines if the given job name corresponds to a season pack
@@ -34,4 +35,19 @@ func IsSeasonPackFallback(finalDir string) bool {
 
 	// If we find 3 or more video files, treat as season pack
 	return len(videoFiles) >= 3
+}
+
+func MergeProcessResults(a, b *typing.ProcessResult) *typing.ProcessResult {
+	if a == nil && b == nil {
+		return &typing.ProcessResult{}
+	}
+	if a == nil {
+		return b
+	}
+	if b == nil {
+		return a
+	}
+	return &typing.ProcessResult{
+		Warnings: append(a.Warnings, b.Warnings...),
+	}
 }
