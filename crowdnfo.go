@@ -20,7 +20,6 @@ import (
 type Options struct {
 	ReleasePath     string
 	MediaInfoPath   string // optional, defaults to "mediainfo" in PATH
-	MediaInfoJSON   []byte // optional, if provided, skip mediainfo execution
 	Category        string
 	NFOFilePath     string // optional
 	APIKey          string
@@ -51,11 +50,10 @@ func ProcessRelease(opts Options) (*typing.ProcessResult, error) {
 
 	progressCB := opts.ProgressCB
 	if progressCB == nil {
-		progressCB = func(stage, detail string) {}
+		progressCB = func(stage, releaseName, detail string) {}
 	}
 
 	mediaInfoPath := checkMediaInfoAvailable(opts.MediaInfoPath)
-	mediaInfoJSON := opts.MediaInfoJSON
 
 	releaseName := files.GetBaseOrName(opts.ReleasePath)
 	if releaseName == "" {
@@ -73,15 +71,15 @@ func ProcessRelease(opts Options) (*typing.ProcessResult, error) {
 
 	// Check if this is a season pack
 	if internal.IsSeasonPack(releaseName) || internal.IsSeasonPackFallback(opts.ReleasePath) {
-		progressCB("startup", fmt.Sprintf("%s - Detected Season Pack", releaseName))
-		result, err := processSeasonPack(opts.APIKey, opts.ReleasePath, releaseName, category, opts.ArchiveDir, mediaInfoPath, opts.MaxHashFileSize, &progressCB)
+		progressCB("startup", releaseName, "Detected Season Pack")
+		result, err := processSeasonPack(opts.APIKey, opts.ReleasePath, releaseName, category, opts.ArchiveDir, mediaInfoPath, opts.MaxHashFileSize, progressCB)
 		if err != nil {
 			return result, err
 		}
 		return result, nil
 	}
 
-	progressCB("startup", fmt.Sprintf("%s - Detected Single Release", releaseName))
+	progressCB("startup", releaseName, "Detected Single Release")
 
 	result := &typing.ProcessResult{}
 
@@ -93,9 +91,10 @@ func ProcessRelease(opts Options) (*typing.ProcessResult, error) {
 		}
 	}
 
-	progressCB("metadata", fmt.Sprintf("%s - Generating MediaInfo", releaseName))
+	progressCB("metadata", releaseName, "Generating MediaInfo")
 	// Generate MediaInfo and hash if media file found
-	if mediaFile != "" && mediaInfoPath != "" && len(mediaInfoJSON) == 0 {
+	var mediaInfoJSON []byte
+	if mediaFile != "" && mediaInfoPath != "" {
 		// Generate MediaInfo JSON only for non-hash-only files
 		if !files.IsHashOnlyFile(mediaFile) {
 			mediaInfoJSON, err = mediainfo.GenerateMediaInfoJSON(mediaFile, mediaInfoPath)
@@ -105,7 +104,7 @@ func ProcessRelease(opts Options) (*typing.ProcessResult, error) {
 		}
 	}
 
-	progressCB("metadata", fmt.Sprintf("%s - Finding NFO File", releaseName))
+	progressCB("metadata", releaseName, "Finding NFO File")
 	nfoFile, err := files.FindNFOFile(opts.ReleasePath)
 	if err != nil {
 		result.Warnings = append(result.Warnings, fmt.Errorf("%s - No NFO File found", releaseName))
@@ -113,7 +112,7 @@ func ProcessRelease(opts Options) (*typing.ProcessResult, error) {
 	}
 
 	var hash string
-	progressCB("hashing", fmt.Sprintf("%s - Generating Hash", releaseName))
+	progressCB("hashing", releaseName, "Generating Hash")
 	// Calculate hash for any file found (media or ISO/IMG)
 	if mediaFile != "" {
 		shouldHash, err := shouldCalculateHash(mediaFile, opts.MaxHashFileSize)
@@ -129,7 +128,7 @@ func ProcessRelease(opts Options) (*typing.ProcessResult, error) {
 		}
 	}
 
-	progressCB("upload", fmt.Sprintf("%s - Uploading", releaseName))
+	progressCB("upload", releaseName, "Uploading")
 	uploadResult := api.UploadToCrowdNFO(opts.APIKey, releaseName, category, hash, opts.ReleasePath, mediaInfoJSON, nfoFile, opts.ArchiveDir, &progressCB)
 
 	result = internal.MergeProcessResults(result, uploadResult)
@@ -142,7 +141,7 @@ func ProcessRelease(opts Options) (*typing.ProcessResult, error) {
 }
 
 // processSeasonPack handles the processing of season packs
-func processSeasonPack(apiKey string, releasePath string, releaseName string, category string, archiveDir string, mediaInfoPath string, maxHashFileSize int64, progressCB *typing.ProgressCB) (*typing.ProcessResult, error) {
+func processSeasonPack(apiKey string, releasePath string, releaseName string, category string, archiveDir string, mediaInfoPath string, maxHashFileSize int64, progressCB typing.ProgressCB) (*typing.ProcessResult, error) {
 	result := &typing.ProcessResult{}
 
 	// Find all video files in the season pack
@@ -159,6 +158,8 @@ func processSeasonPack(apiKey string, releasePath string, releaseName string, ca
 	episodes := make([]files.EpisodeInfo, 0)
 	generalNFO := files.FindGeneralNFO(releasePath)
 
+	progressCB("metadata", releaseName, "Extracting Episodes")
+
 	for _, videoFile := range videoFiles {
 		episodeInfo := files.ExtractEpisodeInfo(videoFile, releaseName, generalNFO)
 		if episodeInfo.ReleaseName != "" { // Only process valid episodes
@@ -171,7 +172,19 @@ func processSeasonPack(apiKey string, releasePath string, releaseName string, ca
 	}
 
 	for _, episode := range episodes {
+
+		// Generate MediaInfo JSON for this episode
+		progressCB("metadata", episode.ReleaseName, "Generating MediaInfo")
+		var mediaInfoJSON []byte
+		if mediaInfoPath != "" {
+			mediaInfoJSON, err = mediainfo.GenerateMediaInfoJSON(episode.VideoFile.Path, mediaInfoPath)
+			if err != nil {
+				result.Warnings = append(result.Warnings, fmt.Errorf("%s - Failed to generate MediaInfo: %w", episode.ReleaseName, err))
+			}
+		}
+
 		// Calculate SHA256 for this episode (check file size limit first)
+		progressCB("hashing", episode.ReleaseName, "Generating Hash")
 		var hash string
 		shouldHash, err := shouldCalculateHash(releasePath, maxHashFileSize)
 		if err != nil {
@@ -184,16 +197,9 @@ func processSeasonPack(apiKey string, releasePath string, releaseName string, ca
 			}
 		}
 
-		// Generate MediaInfo JSON for this episode
-		var mediaInfoJSON []byte
-		if mediaInfoPath != "" {
-			mediaInfoJSON, err = mediainfo.GenerateMediaInfoJSON(episode.VideoFile.Path, mediaInfoPath)
-			if err != nil {
-				result.Warnings = append(result.Warnings, fmt.Errorf("%s - Failed to generate MediaInfo: %w", episode.ReleaseName, err))
-			}
-		}
 		// Upload this episode to CrowdNFO API with file list
-		uploadResult := api.UploadEpisodeToCrowdNFO(apiKey, episode, category, hash, mediaInfoJSON, archiveDir, progressCB)
+		progressCB("upload", episode.ReleaseName, "Uploading")
+		uploadResult := api.UploadEpisodeToCrowdNFO(apiKey, episode, category, hash, mediaInfoJSON, archiveDir, &progressCB)
 		result = internal.MergeProcessResults(result, uploadResult)
 	}
 

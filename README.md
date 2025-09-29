@@ -40,7 +40,6 @@ func main() {
 	opts := crowdnfo.Options{
 		ReleasePath:     "",  // path to the release directory
 		MediaInfoPath:   "",  // path to mediainfo binary (optional, defaults to "mediainfo" in PATH)
-		MediaInfoJSON:   nil, // actual MediaInfo JSON data as byte[] (optional)
 		Category:        "",  // e.g., "TV", "Movies" (optional, auto-detected if empty)
 		NFOFilePath:     "",  // path to the NFO file (optional, auto-detected if empty)
 		APIKey:          "",  // your CrowdNFO API key

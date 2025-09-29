@@ -5,4 +5,4 @@ type ProcessResult struct {
 	Warnings []error
 }
 
-type ProgressCB func(stage string, detail string)
+type ProgressCB func(stage string, releasename string, detail string)
