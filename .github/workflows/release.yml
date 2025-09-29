@@ -38,6 +38,19 @@ jobs:
                   echo "$NOTES" >> $GITHUB_OUTPUT
                   echo "EOF" >> $GITHUB_OUTPUT
 
+            - name: Debug git log output
+              run: |
+                echo "---- git log output ----"
+                git log $RANGE --pretty=format:"%s"
+                echo "---- filtered output ----"
+                git log $RANGE --pretty=format:"%s" | grep -E '^(Fix:|Feat:)' || true
+
+            - name: Debug release notes output
+              run: |
+                echo "---- release notes ----"
+                echo "${{ steps.notes.outputs.release_notes }}"
+
+
             - name: Create GitHub Release
               uses: softprops/action-gh-release@v2
               with:
