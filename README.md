@@ -45,7 +45,7 @@ func main() {
 		APIKey:          "",  // your CrowdNFO API key
 		MaxHashFileSize: 0,   // max file size for hashing in bytes (0 for no limit, -1 for do not hash)
 		ArchiveDir:      "",  // directory to archive uploaded metadata, empty for no archiving
-		ProgressCB: func(stage, detail string) {
+		ProgressCB: func(stage, releaseName, detail string) {
 			fmt.Printf("[%s]\t%s\n", stage, detail)
 		},
 	}
