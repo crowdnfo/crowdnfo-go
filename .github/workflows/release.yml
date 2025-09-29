@@ -27,16 +27,19 @@ jobs:
 
             - name: Generate release notes (Fix and Feat)
               id: notes
+              shell: bash
               run: |
-                  if [ -z "${{ steps.prev_tag.outputs.prev_tag }}" ]; then
-                    RANGE=""
-                  else
-                    RANGE="${{ steps.prev_tag.outputs.prev_tag }}..HEAD"
-                  fi
-                  NOTES=$(git log $RANGE --pretty=format:"%s" | grep -E '^(Fix:|Feat:)' || true)
-                  echo "release_notes<<EOF" >> $GITHUB_OUTPUT
-                  echo "$NOTES" >> $GITHUB_OUTPUT
-                  echo "EOF" >> $GITHUB_OUTPUT
+                if [ -z "${{ steps.prev_tag.outputs.prev_tag }}" ]; then
+                RANGE=""
+                else
+                RANGE="${{ steps.prev_tag.outputs.prev_tag }}..HEAD"
+                fi
+                NOTES=$(git log $RANGE --pretty=format:"%s" | grep -E '^(Fix:|Feat:)' || true)
+                {
+                echo 'release_notes<<EOF'
+                echo "$NOTES"
+                echo 'EOF'
+                } >> $GITHUB_OUTPUT
 
             - name: Debug git log output
               run: |
