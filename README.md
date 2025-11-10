@@ -67,7 +67,7 @@ func main() {
 ## Requirements
 
 - Go 1.21 or newer (for `slices.Contains`)
-- [mediainfo](https://mediaarea.net/en/MediaInfo) binary in your PATH (optional, for media info extraction)
+- [MediaInfo](https://mediaarea.net/en/MediaInfo) version 23.0 or newer (optional, for media info extraction)
 - A valid CrowdNFO API key
 
 ---

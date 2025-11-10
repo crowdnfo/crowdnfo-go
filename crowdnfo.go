@@ -55,6 +55,13 @@ func ProcessRelease(opts Options) (*typing.ProcessResult, error) {
 
 	mediaInfoPath := checkMediaInfoAvailable(opts.MediaInfoPath)
 
+	// Check MediaInfo version if available
+	if mediaInfoPath != "" {
+		if err := mediainfo.CheckMediaInfoVersion(mediaInfoPath); err != nil {
+			return nil, fmt.Errorf("MediaInfo version check failed: %w", err)
+		}
+	}
+
 	releaseName := files.GetBaseOrName(opts.ReleasePath)
 	if releaseName == "" {
 		return nil, fmt.Errorf("Could not determine release name from path: %s", opts.ReleasePath)
